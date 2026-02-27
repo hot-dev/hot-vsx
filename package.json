@@ -2,7 +2,7 @@
   "name": "hot",
   "displayName": "Hot",
   "description": "Hot Language Support with syntax highlighting, LSP integration, and code formatting",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "icon": "images/hot-logo.png",
   "engines": {
     "vscode": "^1.75.0"
@@ -112,28 +112,40 @@
         "when": "editorTextFocus && editorLangId == hot"
       }
     ],
-    "languages": [{
-      "id": "hot",
-      "aliases": ["Hot", "hot"],
-      "extensions": [".hot"],
-      "icon": {
-        "light": "images/hot-logo.png",
-        "dark": "images/hot-logo.png"
-      },
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "hot",
-      "scopeName": "source.hot",
-      "path": "./syntaxes/hot.tmLanguage.json"
-    }, {
-      "scopeName": "markdown.hot.codeblock",
-      "path": "./syntaxes/hot.markdown-injection.json",
-      "injectTo": ["text.html.markdown"],
-      "embeddedLanguages": {
-        "meta.embedded.block.hot": "hot"
+    "languages": [
+      {
+        "id": "hot",
+        "aliases": [
+          "Hot",
+          "hot"
+        ],
+        "extensions": [
+          ".hot"
+        ],
+        "icon": {
+          "light": "images/hot-logo.png",
+          "dark": "images/hot-logo.png"
+        },
+        "configuration": "./language-configuration.json"
       }
-    }],
+    ],
+    "grammars": [
+      {
+        "language": "hot",
+        "scopeName": "source.hot",
+        "path": "./syntaxes/hot.tmLanguage.json"
+      },
+      {
+        "scopeName": "markdown.hot.codeblock",
+        "path": "./syntaxes/hot.markdown-injection.json",
+        "injectTo": [
+          "text.html.markdown"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.hot": "hot"
+        }
+      }
+    ],
     "configuration": {
       "title": "Hot",
       "properties": {
@@ -151,7 +163,9 @@
         },
         "hot.lsp.extraArgs": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Additional arguments to pass to the LSP server",
           "scope": "machine"
@@ -177,12 +191,19 @@
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "eslint": "^8.44.0",
-    "esbuild": "^0.21.5"
+    "esbuild": "^0.27.3",
+    "eslint": "^8.44.0"
   },
   "publisher": "hot-dev",
   "license": "Apache-2.0",
   "homepage": "https://hot.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hot-dev/hot-vsx"
+  },
+  "bugs": {
+    "url": "https://github.com/hot-dev/hot-vsx/issues"
+  },
   "keywords": [
     "hot",
     "workflow",

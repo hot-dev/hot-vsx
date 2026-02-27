@@ -12,3 +12,6 @@ src/
 tsconfig.json
 webpack.config.js
 esbuild.js
+build/
+*.vsix
+package-and-install-vsix.sh

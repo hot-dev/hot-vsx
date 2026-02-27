@@ -16,4 +16,5 @@ lerna-debug.log*
 .eslintcache
 /dist
 /build
+*.vsix
 
