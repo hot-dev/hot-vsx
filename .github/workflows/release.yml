@@ -30,7 +30,9 @@ jobs:
           fi
 
       - name: Package extension
-        run: npx --yes @vscode/vsce package --no-yarn --out build/
+        run: |
+          mkdir -p build
+          npx --yes @vscode/vsce package --no-yarn --out build/
         
       - name: Create release
         env:
