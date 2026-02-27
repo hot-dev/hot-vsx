@@ -1,0 +1,19 @@
+# Dependencies
+/node_modules
+
+# Environment variables
+.env
+.env.local
+
+# Optional: Logs, build artifacts, etc.
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.nyc_output
+/coverage
+.config-temp
+.eslintcache
+/dist
+/build
+

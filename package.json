@@ -1,0 +1,193 @@
+{
+  "name": "hot",
+  "displayName": "Hot",
+  "description": "Hot Language Support with syntax highlighting, LSP integration, and code formatting",
+  "version": "1.1.0",
+  "icon": "images/hot-logo.png",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "categories": [
+    "Programming Languages",
+    "Formatters"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "hot.startAnalyzer",
+        "title": "Hot: Start Analyzer"
+      },
+      {
+        "command": "hot.stopAnalyzer",
+        "title": "Hot: Stop Analyzer"
+      },
+      {
+        "command": "hot.restartAnalyzer",
+        "title": "Hot: Restart Analyzer"
+      },
+      {
+        "command": "hot.openSettings",
+        "title": "Hot: Open Settings"
+      },
+      {
+        "command": "hot.showLogs",
+        "title": "Hot: Show Logs"
+      },
+      {
+        "command": "hot.createAIHints",
+        "title": "Hot: Create AI Coding Hints"
+      },
+      {
+        "command": "hot.formatDocument",
+        "title": "Hot: Format Document"
+      },
+      {
+        "command": "hot.startRepl",
+        "title": "Hot: Start REPL",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "hot.sendToRepl",
+        "title": "Hot: Send Selection to REPL"
+      },
+      {
+        "command": "hot.sendFileToRepl",
+        "title": "Hot: Send File to REPL"
+      },
+      {
+        "command": "hot.evalSelection",
+        "title": "Hot: Evaluate Selection"
+      },
+      {
+        "command": "hot.evalTopLevelForm",
+        "title": "Hot: Evaluate Top-Level Form"
+      },
+      {
+        "command": "hot.evalToOutputPanel",
+        "title": "Hot: Evaluate to Output Panel"
+      },
+      {
+        "command": "hot.clearEvalDecorations",
+        "title": "Hot: Clear Eval Results"
+      },
+      {
+        "command": "hot.showEvalOutput",
+        "title": "Hot: Show Eval Output"
+      },
+      {
+        "command": "hot.resetReplSession",
+        "title": "Hot: Reset REPL Session"
+      },
+      {
+        "command": "hot.updateHot",
+        "title": "Hot: Update Hot CLI"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "hot.evalSelection",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId == hot"
+      },
+      {
+        "command": "hot.evalTopLevelForm",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "when": "editorTextFocus && editorLangId == hot"
+      },
+      {
+        "command": "hot.sendToRepl",
+        "key": "alt+enter",
+        "mac": "alt+enter",
+        "when": "editorTextFocus && editorLangId == hot"
+      },
+      {
+        "command": "hot.clearEvalDecorations",
+        "key": "escape",
+        "when": "editorTextFocus && editorLangId == hot"
+      }
+    ],
+    "languages": [{
+      "id": "hot",
+      "aliases": ["Hot", "hot"],
+      "extensions": [".hot"],
+      "icon": {
+        "light": "images/hot-logo.png",
+        "dark": "images/hot-logo.png"
+      },
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "hot",
+      "scopeName": "source.hot",
+      "path": "./syntaxes/hot.tmLanguage.json"
+    }, {
+      "scopeName": "markdown.hot.codeblock",
+      "path": "./syntaxes/hot.markdown-injection.json",
+      "injectTo": ["text.html.markdown"],
+      "embeddedLanguages": {
+        "meta.embedded.block.hot": "hot"
+      }
+    }],
+    "configuration": {
+      "title": "Hot",
+      "properties": {
+        "hot.lsp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Hot Language Server for diagnostics, autocomplete, and other features. Requires the Hot CLI to be installed.",
+          "scope": "window"
+        },
+        "hot.lsp.commandPath": {
+          "type": "string",
+          "default": "hot",
+          "description": "Path to the Hot CLI executable for the LSP server",
+          "scope": "machine"
+        },
+        "hot.lsp.extraArgs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Additional arguments to pass to the LSP server",
+          "scope": "machine"
+        },
+        "hot.checkForUpdates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically check for Hot CLI updates on startup (at most once per 24 hours)",
+          "scope": "application"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "node esbuild.js --production",
+    "vscode:prepublish": "npm run package",
+    "lint": "eslint .",
+    "setup": "npm install"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.44.0",
+    "esbuild": "^0.21.5"
+  },
+  "publisher": "hot-dev",
+  "license": "Apache-2.0",
+  "homepage": "https://hot.dev",
+  "keywords": [
+    "hot",
+    "workflow",
+    "functional",
+    "backend",
+    "automation"
+  ]
+}
