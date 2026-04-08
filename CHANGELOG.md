@@ -1,5 +1,12 @@
 # CHANGE LOG
 
+## [1.2.0] - 2026-04-06
+
+- Triple-backtick template literal support (indent-aware templates)
+- Syntax highlighting for property access (`user.name`), spread operator (`...`), and `meta` keyword
+- Richer template expression highlighting (function calls, constants, pipe operator inside `${}`)
+- Editor improvements: word-aware selection for hyphenated identifiers, bracket colorization, brace auto-indent, region folding
+
 ## [1.1.0] - 2026-02-19
 
 - Triple-quote string support (Hot 1.1.0+)

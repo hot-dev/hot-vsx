@@ -39,7 +39,19 @@
 			"include": "#operators"
 		},
 		{
+			"include": "#spreadOperator"
+		},
+		{
+			"include": "#propertyAccess"
+		},
+		{
+			"include": "#placeholders"
+		},
+		{
 			"include": "#variables"
+		},
+		{
+			"include": "#tripleBacktickTemplates"
 		},
 		{
 			"include": "#stringTemplates"
@@ -114,7 +126,7 @@
 				{
 					"comment": "Declaration keywords - (?<!-) prevents matching in identifiers like some-type",
 					"name": "keyword.declaration.hot",
-					"match": "(?<!-)(\\b(type|enum|fn|ns)\\b)"
+					"match": "(?<!-)(\\b(type|enum|fn|ns|meta)\\b)"
 				},
 				{
 					"comment": "Control keywords - (?<!-) prevents matching in identifiers like some-lazy",
@@ -127,7 +139,12 @@
 			"name": "string.quoted.triple.hot",
 			"begin": "\"\"\"",
 			"end": "\"\"\"",
-			"patterns": []
+			"patterns": [
+				{
+					"name": "constant.character.escape.hot",
+					"match": "\\\\."
+				}
+			]
 		},
 		"strings": {
 			"name": "string.quoted.double.hot",
@@ -163,6 +180,14 @@
 						"1": { "name": "variable.other.property.hot" },
 						"2": { "name": "punctuation.separator.key-value.hot" }
 					}
+				}
+			]
+		},
+		"placeholders": {
+			"patterns": [
+				{
+					"name": "variable.language.placeholder.hot",
+					"match": "%(?:\\d+)?"
 				}
 			]
 		},
@@ -310,6 +335,26 @@
 				}
 			]
 		},
+		"spreadOperator": {
+			"patterns": [
+				{
+					"name": "keyword.operator.spread.hot",
+					"match": "\\.\\.\\."
+				}
+			]
+		},
+		"propertyAccess": {
+			"patterns": [
+				{
+					"name": "meta.property.access.hot",
+					"match": "(?<=[a-zA-Z0-9_?!\\]\\)])(\\.)([a-zA-Z_][a-zA-Z0-9_\\-?!]*)",
+					"captures": {
+						"1": { "name": "punctuation.accessor.dot.hot" },
+						"2": { "name": "variable.other.property.hot" }
+					}
+				}
+			]
+		},
 		"variantAccess": {
 			"patterns": [
 				{
@@ -321,6 +366,60 @@
 						"2": { "name": "punctuation.accessor.hot" },
 						"3": { "name": "entity.name.type.variant.hot" }
 					}
+				}
+			]
+		},
+		"tripleBacktickTemplates": {
+			"name": "string.template.triple.hot",
+			"begin": "```",
+			"end": "```",
+			"patterns": [
+				{
+					"name": "meta.embedded.expression.hot",
+					"begin": "\\$\\{",
+					"end": "\\}",
+					"beginCaptures": {
+						"0": { "name": "punctuation.definition.template-expression.begin.hot" }
+					},
+					"endCaptures": {
+						"0": { "name": "punctuation.definition.template-expression.end.hot" }
+					},
+					"patterns": [
+						{
+							"include": "#comments"
+						},
+						{
+							"include": "#flowModifiers"
+						},
+						{
+							"include": "#keywords"
+						},
+						{
+							"include": "#functionCalls"
+						},
+						{
+							"include": "#namespacePaths"
+						},
+						{
+							"include": "#placeholders"
+						},
+						{
+							"include": "#variables"
+						},
+						{
+							"include": "#numbers"
+						},
+						{
+							"include": "#strings"
+						},
+						{
+							"include": "#constants"
+						}
+					]
+				},
+				{
+					"name": "constant.character.escape.hot",
+					"match": "\\\\."
 				}
 			]
 		},
@@ -344,10 +443,19 @@
 							"include": "#comments"
 						},
 						{
+							"include": "#flowModifiers"
+						},
+						{
 							"include": "#keywords"
 						},
 						{
+							"include": "#functionCalls"
+						},
+						{
 							"include": "#namespacePaths"
+						},
+						{
+							"include": "#placeholders"
 						},
 						{
 							"include": "#variables"
@@ -357,6 +465,9 @@
 						},
 						{
 							"include": "#strings"
+						},
+						{
+							"include": "#constants"
 						}
 					]
 				},
