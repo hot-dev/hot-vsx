@@ -172,7 +172,7 @@ Apache License
 
    END OF TERMS AND CONDITIONS
 
-   Copyright 2025 Hot Dev, LLC
+   Copyright 2025-2026 Hot Dev, LLC
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
