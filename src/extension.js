@@ -389,6 +389,33 @@ function extractNamespaceFromDocument(document) {
 }
 
 /**
+ * Whether a line continues the form above it with a `where` constraint.
+ * `where` can't start a statement, so a line that starts with it belongs to
+ * the form above, such as a record type's invariant on the line after `}`.
+ * @param {string} text
+ * @returns {boolean}
+ */
+function isWhereContinuation(text) {
+    return /^\s*where(?![\w\-?!])/u.test(text);
+}
+
+/**
+ * The text of the first line at or after `from` that is not blank or a comment.
+ * @param {vscode.TextDocument} document
+ * @param {number} from
+ * @returns {string | null}
+ */
+function nextCodeLine(document, from) {
+    for (let i = from; i < document.lineCount; i++) {
+        const text = document.lineAt(i).text;
+        if (text.trim() !== '' && !text.trim().startsWith('//')) {
+            return text;
+        }
+    }
+    return null;
+}
+
+/**
  * Try to find the top-level form at cursor position
  * This is a simplified version - a full implementation would need proper parsing
  * @param {vscode.TextEditor} editor
@@ -412,6 +439,11 @@ function getTopLevelForm(editor) {
 
         // Skip empty lines and comments
         if (text.trim() === '' || text.trim().startsWith('//')) {
+            continue;
+        }
+
+        // A `where` line belongs to the form above it
+        if (isWhereContinuation(text)) {
             continue;
         }
 
@@ -440,13 +472,17 @@ function getTopLevelForm(editor) {
 
         endLine = i;
 
-        // If we've found a body and braces are balanced, we're done
+        // If we've found a body and braces are balanced, we're done,
+        // unless the next line adds a `where` constraint to this form
         if (foundBody && braceCount === 0 && parenCount <= 0) {
-            break;
+            const next = nextCodeLine(document, i + 1);
+            if (next === null || !isWhereContinuation(next)) {
+                break;
+            }
         }
 
         // Also stop at the next top-level definition
-        if (i > startLine && /^[a-zA-Z_:]/u.test(text) && text.trim() !== '' && !text.trim().startsWith('//')) {
+        if (i > startLine && /^[a-zA-Z_:]/u.test(text) && text.trim() !== '' && !text.trim().startsWith('//') && !isWhereContinuation(text)) {
             endLine = i - 1;
             break;
         }

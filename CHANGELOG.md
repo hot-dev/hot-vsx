@@ -1,5 +1,10 @@
 # CHANGE LOG
 
+## [Unreleased]
+
+- Syntax highlighting for the `where` constraint keyword (Hot 3.0+)
+- `Hot: Evaluate Top-Level Form` includes a `where` constraint written on the line after a closing `}`
+
 ## [1.2.0] - 2026-04-06
 
 - Triple-backtick template literal support (indent-aware templates)

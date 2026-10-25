@@ -132,6 +132,11 @@
 					"comment": "Control keywords - (?<!-) prevents matching in identifiers like some-lazy",
 					"name": "keyword.control.hot",
 					"match": "(?<!-)(\\b(lazy|do)\\b)"
+				},
+				{
+					"comment": "Constraint keyword (Hot 3.0+) - the lookarounds prevent matching in identifiers like some-where or where-to",
+					"name": "keyword.other.where.hot",
+					"match": "(?<![\\w\\-?!])where(?![\\w\\-?!])"
 				}
 			]
 		},
