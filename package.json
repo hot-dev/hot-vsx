@@ -198,7 +198,7 @@
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "esbuild": "^0.27.3",
+    "esbuild": "^0.28.2",
     "eslint": "^8.44.0",
     "vscode-oniguruma": "2.0.1",
     "vscode-textmate": "9.2.0"
