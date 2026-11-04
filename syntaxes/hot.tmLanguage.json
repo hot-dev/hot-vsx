@@ -15,13 +15,13 @@
 			"include": "#typeCoercion"
 		},
 		{
-			"include": "#flowModifiers"
-		},
-		{
 			"include": "#specialIdentifiers"
 		},
 		{
 			"include": "#mapKeys"
+		},
+		{
+			"include": "#flowModifiers"
 		},
 		{
 			"include": "#keywords"
@@ -48,6 +48,9 @@
 			"include": "#placeholders"
 		},
 		{
+			"include": "#constants"
+		},
+		{
 			"include": "#variables"
 		},
 		{
@@ -64,9 +67,6 @@
 		},
 		{
 			"include": "#numbers"
-		},
-		{
-			"include": "#constants"
 		}
 	],
 	"repository": {
@@ -75,6 +75,11 @@
 				{
 					"name": "comment.line.double-slash.hot",
 					"match": "//.*$"
+				},
+				{
+					"name": "comment.block.hot",
+					"begin": "/\\*",
+					"end": "\\*/"
 				}
 			]
 		},
@@ -111,9 +116,9 @@
 					"match": "\\|>"
 				},
 				{
-					"comment": "Flow keywords - (?<!-) prevents matching in identifiers",
+					"comment": "Flow keywords - the lookarounds prevent matching in identifiers like cond-x or some-match",
 					"name": "keyword.control.flow.hot",
-					"match": "(?<!-)\\b(?:serial|parallel|cond-all|cond|match-all|match)\\b"
+					"match": "(?<![\\w\\-$])(?:serial|parallel|cond-all|cond|match-all|match)(?![\\w\\-$])"
 				},
 				{
 					"name": "keyword.operator.branch.hot",
@@ -124,14 +129,19 @@
 		"keywords": {
 			"patterns": [
 				{
-					"comment": "Declaration keywords - (?<!-) prevents matching in identifiers like some-type",
+					"comment": "Declaration keywords - the lookarounds prevent matching in identifiers like type-name or some-type",
 					"name": "keyword.declaration.hot",
-					"match": "(?<!-)(\\b(type|enum|fn|ns|meta)\\b)"
+					"match": "(?<![\\w\\-$])(?:type|enum|fn|ns|meta)(?![\\w\\-$])"
 				},
 				{
-					"comment": "Control keywords - (?<!-) prevents matching in identifiers like some-lazy",
+					"comment": "Control keywords - the lookarounds prevent matching in identifiers like do-request or some-lazy",
 					"name": "keyword.control.hot",
-					"match": "(?<!-)(\\b(lazy|do)\\b)"
+					"match": "(?<![\\w\\-$])(?:lazy|do)(?![\\w\\-$])"
+				},
+				{
+					"comment": "Constraint keyword (Hot 3.0+) - the lookarounds prevent matching in identifiers like some-where or where-to",
+					"name": "keyword.other.where.hot",
+					"match": "(?<![\\w\\-?!])where(?![\\w\\-?!])"
 				}
 			]
 		},
@@ -175,7 +185,7 @@
 			"patterns": [
 				{
 					"name": "meta.map-key.hot",
-					"match": "\\b([a-zA-Z_][a-zA-Z0-9_\\-?!]*)\\s*(:)(?!=)",
+					"match": "\\b([a-zA-Z_][a-zA-Z0-9_\\-?!]*)\\s*(:)(?![:=])",
 					"captures": {
 						"1": { "name": "variable.other.property.hot" },
 						"2": { "name": "punctuation.separator.key-value.hot" }
@@ -207,11 +217,11 @@
 			"patterns": [
 				{
 					"name": "constant.language.boolean.hot",
-					"match": "\\b(true|false)\\b"
+					"match": "(?<![\\w\\-$])(?:true|false)(?![\\w\\-$])"
 				},
 				{
 					"name": "constant.language.null.hot",
-					"match": "\\bnull\\b"
+					"match": "(?<![\\w\\-$])null(?![\\w\\-$])"
 				}
 			]
 		},
@@ -236,6 +246,15 @@
 		"namespacePaths": {
 			"patterns": [
 				{
+					"comment": "A capitalized name after the slash is a type or constructor",
+					"name": "meta.namespace.reference.hot",
+					"match": "(::[a-zA-Z_][a-zA-Z0-9_\\-?!]*(?:::[a-zA-Z0-9_\\-?!]+)*)(/[A-Z][a-zA-Z0-9_\\-?!]*)",
+					"captures": {
+						"1": { "name": "support.class.hot" },
+						"2": { "name": "entity.name.type.hot" }
+					}
+				},
+				{
 					"name": "meta.namespace.reference.hot",
 					"match": "(::[a-zA-Z_][a-zA-Z0-9_\\-?!]*(?:::[a-zA-Z0-9_\\-?!]+)*)(/[a-zA-Z_][a-zA-Z0-9_\\-?!]*)?",
 					"captures": {
@@ -249,7 +268,7 @@
 			"patterns": [
 				{
 					"name": "meta.annotation.bracket.hot",
-					"begin": "\\bmeta\\s+\\[",
+					"begin": "(?<![\\w\\-$])meta\\s*\\[",
 					"end": "\\]",
 					"beginCaptures": {
 						"0": { "name": "keyword.declaration.meta.hot" }
@@ -265,7 +284,7 @@
 				},
 				{
 					"name": "meta.annotation.brace.hot",
-					"begin": "\\bmeta\\s+\\{",
+					"begin": "(?<![\\w\\-$])meta\\s*\\{",
 					"end": "\\}",
 					"beginCaptures": {
 						"0": { "name": "keyword.declaration.meta.hot" }
@@ -281,8 +300,47 @@
 				}
 			]
 		},
+		"metaBraces": {
+			"begin": "\\{",
+			"end": "\\}",
+			"patterns": [
+				{
+					"include": "#metaAnnotationsContent"
+				}
+			]
+		},
+		"metaBrackets": {
+			"begin": "\\[",
+			"end": "\\]",
+			"patterns": [
+				{
+					"include": "#metaAnnotationsContent"
+				}
+			]
+		},
 		"metaAnnotationsContent": {
 			"patterns": [
+				{
+					"include": "#comments"
+				},
+				{
+					"include": "#metaBraces"
+				},
+				{
+					"include": "#metaBrackets"
+				},
+				{
+					"include": "#tripleBacktickTemplates"
+				},
+				{
+					"include": "#stringTemplates"
+				},
+				{
+					"include": "#namespacePaths"
+				},
+				{
+					"include": "#mapKeys"
+				},
 				{
 					"name": "string.quoted.triple.meta.hot",
 					"begin": "\"\"\"",
@@ -306,11 +364,11 @@
 				},
 				{
 					"name": "constant.language.boolean.meta.hot",
-					"match": "\\b(true|false)\\b"
+					"match": "(?<![\\w\\-$])(?:true|false)(?![\\w\\-$])"
 				},
 				{
 					"name": "constant.language.null.meta.hot",
-					"match": "\\bnull\\b"
+					"match": "(?<![\\w\\-$])null(?![\\w\\-$])"
 				},
 				{
 					"name": "punctuation.separator.meta.hot",
@@ -369,53 +427,102 @@
 				}
 			]
 		},
+		"templateExpression": {
+			"name": "meta.embedded.expression.hot",
+			"begin": "\\$\\{",
+			"end": "\\}",
+			"beginCaptures": {
+				"0": { "name": "punctuation.definition.template-expression.begin.hot" }
+			},
+			"endCaptures": {
+				"0": { "name": "punctuation.definition.template-expression.end.hot" }
+			},
+			"patterns": [
+				{
+					"include": "#embeddedCode"
+				}
+			]
+		},
+		"embeddedBraces": {
+			"begin": "\\{",
+			"end": "\\}",
+			"patterns": [
+				{
+					"include": "#embeddedCode"
+				}
+			]
+		},
+		"embeddedCode": {
+			"patterns": [
+				{
+					"include": "#comments"
+				},
+				{
+					"include": "#specialIdentifiers"
+				},
+				{
+					"include": "#mapKeys"
+				},
+				{
+					"include": "#flowModifiers"
+				},
+				{
+					"include": "#keywords"
+				},
+				{
+					"include": "#variantAccess"
+				},
+				{
+					"include": "#functionCalls"
+				},
+				{
+					"include": "#namespacePaths"
+				},
+				{
+					"include": "#operators"
+				},
+				{
+					"include": "#spreadOperator"
+				},
+				{
+					"include": "#propertyAccess"
+				},
+				{
+					"include": "#placeholders"
+				},
+				{
+					"include": "#constants"
+				},
+				{
+					"include": "#variables"
+				},
+				{
+					"include": "#tripleBacktickTemplates"
+				},
+				{
+					"include": "#stringTemplates"
+				},
+				{
+					"include": "#tripleQuoteStrings"
+				},
+				{
+					"include": "#strings"
+				},
+				{
+					"include": "#numbers"
+				},
+				{
+					"include": "#embeddedBraces"
+				}
+			]
+		},
 		"tripleBacktickTemplates": {
 			"name": "string.template.triple.hot",
 			"begin": "```",
 			"end": "```",
 			"patterns": [
 				{
-					"name": "meta.embedded.expression.hot",
-					"begin": "\\$\\{",
-					"end": "\\}",
-					"beginCaptures": {
-						"0": { "name": "punctuation.definition.template-expression.begin.hot" }
-					},
-					"endCaptures": {
-						"0": { "name": "punctuation.definition.template-expression.end.hot" }
-					},
-					"patterns": [
-						{
-							"include": "#comments"
-						},
-						{
-							"include": "#flowModifiers"
-						},
-						{
-							"include": "#keywords"
-						},
-						{
-							"include": "#functionCalls"
-						},
-						{
-							"include": "#namespacePaths"
-						},
-						{
-							"include": "#placeholders"
-						},
-						{
-							"include": "#variables"
-						},
-						{
-							"include": "#numbers"
-						},
-						{
-							"include": "#strings"
-						},
-						{
-							"include": "#constants"
-						}
-					]
+					"include": "#templateExpression"
 				},
 				{
 					"name": "constant.character.escape.hot",
@@ -429,47 +536,7 @@
 			"end": "`",
 			"patterns": [
 				{
-					"name": "meta.embedded.expression.hot",
-					"begin": "\\$\\{",
-					"end": "\\}",
-					"beginCaptures": {
-						"0": { "name": "punctuation.definition.template-expression.begin.hot" }
-					},
-					"endCaptures": {
-						"0": { "name": "punctuation.definition.template-expression.end.hot" }
-					},
-					"patterns": [
-						{
-							"include": "#comments"
-						},
-						{
-							"include": "#flowModifiers"
-						},
-						{
-							"include": "#keywords"
-						},
-						{
-							"include": "#functionCalls"
-						},
-						{
-							"include": "#namespacePaths"
-						},
-						{
-							"include": "#placeholders"
-						},
-						{
-							"include": "#variables"
-						},
-						{
-							"include": "#numbers"
-						},
-						{
-							"include": "#strings"
-						},
-						{
-							"include": "#constants"
-						}
-					]
+					"include": "#templateExpression"
 				},
 				{
 					"name": "constant.character.escape.hot",

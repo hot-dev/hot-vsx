@@ -1,9 +1,11 @@
 const vscode = require('vscode');
-const { LanguageClient, TransportKind } = require('vscode-languageclient/node');
-const { execFile, spawn } = require('child_process');
+const { LanguageClient, State, TransportKind } = require('vscode-languageclient/node');
+const { execFile } = require('child_process');
 const https = require('https');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { declaredNamespace, documentNamespace, replInput, stripAnsi, topLevelFormAt } = require('./source');
 
 /** @type {LanguageClient | null} */
 let client = null;
@@ -29,6 +31,8 @@ const REPL_TERMINAL_NAME = 'Hot REPL';
 // Eval result decorations
 /** @type {vscode.TextEditorDecorationType} */
 let evalResultDecorationType = null;
+/** Removes the inline result on show, and its timer and edit listener. */
+let clearShownResult = null;
 
 // Output channel for eval results
 /** @type {vscode.OutputChannel | null} */
@@ -45,64 +49,48 @@ async function formatHotDocument(document) {
     const commandPath = config.get('lsp.commandPath', 'hot');
     const content = document.getText();
 
-    return new Promise((resolve, reject) => {
-        // Write content to a temp file with .hot extension
-        const tmpDir = require('os').tmpdir();
-        const tmpFile = path.join(tmpDir, `hot-fmt-${Date.now()}.hot`);
+    return new Promise((resolve) => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hot-fmt-'));
+        const tmpFile = path.join(tmpDir, 'format.hot');
 
         fs.writeFileSync(tmpFile, content, 'utf8');
 
         execFile(commandPath, ['fmt', tmpFile], { timeout: 10000 }, (error, stdout, stderr) => {
             try {
                 if (error) {
-                    // Check if it's just a CHAR-AUDIT warning (formatter still produces output)
-                    if (stderr && stderr.includes('CHAR-AUDIT')) {
-                        // Read the possibly formatted file
-                        if (fs.existsSync(tmpFile)) {
-                            const formatted = fs.readFileSync(tmpFile, 'utf8');
-                            fs.unlinkSync(tmpFile);
-
-                            if (formatted !== content) {
-                                const fullRange = new vscode.Range(
-                                    document.positionAt(0),
-                                    document.positionAt(content.length)
-                                );
-                                resolve([vscode.TextEdit.replace(fullRange, formatted)]);
-                                return;
-                            }
-                        }
-                    }
-
-                    if (channel) {
-                        channel.appendLine(`[hot] Format error: ${error.message}`);
-                        if (stderr) channel.appendLine(`[hot] stderr: ${stderr}`);
-                    }
-                    // Don't reject - just return empty edits
+                    log(`[hot] Format error: ${error.message}`);
+                    if (stderr) log(`[hot] stderr: ${stripAnsi(stderr)}`);
                     resolve([]);
                     return;
                 }
 
-                // Read the formatted file
                 const formatted = fs.readFileSync(tmpFile, 'utf8');
-                fs.unlinkSync(tmpFile);
-
-                if (formatted !== content) {
-                    const fullRange = new vscode.Range(
-                        document.positionAt(0),
-                        document.positionAt(content.length)
-                    );
-                    resolve([vscode.TextEdit.replace(fullRange, formatted)]);
-                } else {
+                if (formatted === content) {
                     resolve([]);
+                    return;
                 }
+                const fullRange = new vscode.Range(
+                    document.positionAt(0),
+                    document.positionAt(content.length)
+                );
+                resolve([vscode.TextEdit.replace(fullRange, formatted)]);
             } catch (e) {
-                // Clean up temp file if it exists
-                try { fs.unlinkSync(tmpFile); } catch (_) {}
-                if (channel) channel.appendLine(`[hot] Format exception: ${e.message}`);
+                log(`[hot] Format exception: ${e.message}`);
                 resolve([]);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
             }
         });
     });
+}
+
+/**
+ * Write a line to the Hot output channel, creating it if needed
+ * @param {string} text
+ */
+function log(text) {
+    channel = channel || vscode.window.createOutputChannel(CHANNEL_NAME);
+    channel.appendLine(text);
 }
 
 // ============================================================================
@@ -123,15 +111,14 @@ function startRepl() {
         return replTerminal;
     }
 
-    // Create a new terminal for the REPL
+    // Run the REPL as the terminal's process, so a path with spaces needs no quoting
     replTerminal = vscode.window.createTerminal({
         name: REPL_TERMINAL_NAME,
         cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
-        iconPath: new vscode.ThemeIcon('terminal')
+        iconPath: new vscode.ThemeIcon('terminal'),
+        shellPath: commandPath,
+        shellArgs: ['repl']
     });
-
-    // Send the repl command
-    replTerminal.sendText(`${commandPath} repl`);
     replTerminal.show();
 
     // Track terminal closure
@@ -155,12 +142,12 @@ function sendToRepl(text) {
         // Wait a bit for the REPL to start before sending
         setTimeout(() => {
             if (replTerminal) {
-                replTerminal.sendText(text);
+                replTerminal.sendText(replInput(text));
             }
         }, 1500);
     } else {
         replTerminal.show();
-        replTerminal.sendText(text);
+        replTerminal.sendText(replInput(text));
     }
 }
 
@@ -231,7 +218,7 @@ async function evaluateHotCode(code, namespace, fileUri) {
             return {
                 success: result.success,
                 result: result.result,
-                error: result.error,
+                error: result.error && stripAnsi(result.error),
                 namespace: result.namespace,
                 stdout: result.stdout
             };
@@ -249,7 +236,7 @@ async function evaluateHotCode(code, namespace, fileUri) {
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
 
     return new Promise((resolve) => {
-        execFile(commandPath, ['eval', code], {
+        execFile(commandPath, ['eval', '--', code], {
             timeout: 30000,
             cwd: cwd
         }, (error, stdout, stderr) => {
@@ -257,7 +244,7 @@ async function evaluateHotCode(code, namespace, fileUri) {
                 resolve({
                     success: false,
                     result: '',
-                    error: stderr || error.message
+                    error: stripAnsi(stderr || error.message)
                 });
             } else {
                 resolve({
@@ -278,10 +265,11 @@ async function evaluateHotCode(code, namespace, fileUri) {
  * @param {string} [stdout] - Captured stdout output
  */
 function showInlineResult(editor, range, result, isError, stdout) {
+    clearInlineResult();
     const decorationType = getEvalDecorationType();
 
     // Combine stdout and result for display
-    let displayResult = result;
+    let displayResult = result ?? '';
     if (stdout && stdout.trim()) {
         // If there's stdout, show it before the result
         displayResult = stdout.trim() + (result && result !== 'null' ? ` => ${result}` : '');
@@ -307,19 +295,31 @@ function showInlineResult(editor, range, result, isError, stdout) {
 
     editor.setDecorations(decorationType, [decoration]);
 
-    // Clear decoration after a delay (or on next edit)
-    const disposable = vscode.workspace.onDidChangeTextDocument(e => {
+    // Clear on the next edit, or after 10 seconds
+    const listener = vscode.workspace.onDidChangeTextDocument(e => {
         if (e.document === editor.document) {
-            editor.setDecorations(decorationType, []);
-            disposable.dispose();
+            clearInlineResult();
         }
     });
+    const timer = setTimeout(clearInlineResult, 10000);
 
-    // Also clear after 10 seconds
-    setTimeout(() => {
+    clearShownResult = () => {
+        clearTimeout(timer);
+        listener.dispose();
         editor.setDecorations(decorationType, []);
-        disposable.dispose();
-    }, 10000);
+    };
+    vscode.commands.executeCommand('setContext', 'hot.evalResultVisible', true);
+}
+
+/**
+ * Remove the inline eval result, if one is showing
+ */
+function clearInlineResult() {
+    if (clearShownResult) {
+        clearShownResult();
+        clearShownResult = null;
+        vscode.commands.executeCommand('setContext', 'hot.evalResultVisible', false);
+    }
 }
 
 /**
@@ -367,104 +367,28 @@ function showResultInOutputChannel(code, result, isError, stdout) {
  * @returns {string | null}
  */
 function extractNamespaceFromDocument(document) {
-    const text = document.getText();
-    const lines = text.split('\n');
-
-    for (const line of lines) {
-        const trimmed = line.trim();
-        // Match patterns like "::namespace::path ns" or "::namespace::path #{"doc": ...} ns"
-        if (trimmed.startsWith('::') && (trimmed.endsWith(' ns') || trimmed.includes('#'))) {
-            // Extract the namespace part
-            const nsEnd = trimmed.indexOf('#') !== -1 ? trimmed.indexOf('#') : trimmed.lastIndexOf(' ns');
-            if (nsEnd > 0) {
-                const ns = trimmed.substring(0, nsEnd).trim();
-                if (ns.startsWith('::')) {
-                    return ns;
-                }
-            }
-        }
-    }
-
-    return null;
+    return documentNamespace(document.getText().split(/\r?\n/u));
 }
 
 /**
- * Try to find the top-level form at cursor position
- * This is a simplified version - a full implementation would need proper parsing
+ * Find the top-level form at the cursor
  * @param {vscode.TextEditor} editor
  * @returns {{ text: string, range: vscode.Range } | null}
  */
 function getTopLevelForm(editor) {
     const document = editor.document;
-    const position = editor.selection.active;
-
-    // Simple heuristic: find the form by looking for balanced braces/parens
-    // Start from current line and expand outward
-
-    let startLine = position.line;
-    let endLine = position.line;
-
-    // Find the start: go up until we hit a line that starts a definition
-    // (a line that starts with an identifier, not indented)
-    for (let i = position.line; i >= 0; i--) {
-        const line = document.lineAt(i);
-        const text = line.text;
-
-        // Skip empty lines and comments
-        if (text.trim() === '' || text.trim().startsWith('//')) {
-            continue;
-        }
-
-        // If line starts at column 0 with a word character or ::, this is likely a top-level form start
-        if (/^[a-zA-Z_:]/u.test(text)) {
-            startLine = i;
-            break;
-        }
-    }
-
-    // Find the end: look for balanced braces
-    let braceCount = 0;
-    let parenCount = 0;
-    let foundBody = false;
-
-    for (let i = startLine; i < document.lineCount; i++) {
-        const line = document.lineAt(i);
-        const text = line.text;
-
-        for (const ch of text) {
-            if (ch === '{') { braceCount++; foundBody = true; }
-            if (ch === '}') { braceCount--; }
-            if (ch === '(') { parenCount++; }
-            if (ch === ')') { parenCount--; }
-        }
-
-        endLine = i;
-
-        // If we've found a body and braces are balanced, we're done
-        if (foundBody && braceCount === 0 && parenCount <= 0) {
-            break;
-        }
-
-        // Also stop at the next top-level definition
-        if (i > startLine && /^[a-zA-Z_:]/u.test(text) && text.trim() !== '' && !text.trim().startsWith('//')) {
-            endLine = i - 1;
-            break;
-        }
-    }
+    const lines = document.getText().split(/\r?\n/u);
+    const form = topLevelFormAt(lines, editor.selection.active.line);
+    if (!form) return null;
 
     const range = new vscode.Range(
-        new vscode.Position(startLine, 0),
-        new vscode.Position(endLine, document.lineAt(endLine).text.length)
+        new vscode.Position(form.start, 0),
+        new vscode.Position(form.end, document.lineAt(form.end).text.length)
     );
-
     const text = document.getText(range).trim();
 
     // Don't return namespace declarations
-    if (text.endsWith(' ns') || text.match(/^::[^\s]+ ns$/)) {
-        return null;
-    }
-
-    return { text, range };
+    return declaredNamespace(text) ? null : { text, range };
 }
 
 function buildTooltip() {
@@ -508,7 +432,10 @@ function updateStatus(text, tooltip, command) {
 
 function startClient() {
     if (client) {
-        return;
+        if (client.state !== State.Stopped) {
+            return;
+        }
+        client = null;
     }
 
     const config = vscode.workspace.getConfiguration('hot');
@@ -525,18 +452,14 @@ function startClient() {
 
     // For multi-root workspaces, only start ONE client for the first workspace folder
     const workspaceFolders = vscode.workspace.workspaceFolders || [];
-    if (workspaceFolders.length === 0) {
-        if (channel) {
-            channel.appendLine('[hot] No workspace folders found, cannot start LSP');
-        }
-        return;
-    }
+    const primaryFolder = workspaceFolders[0];
 
-    // Use the FIRST workspace folder as the primary one
-    const primaryWorkspace = workspaceFolders[0].uri.fsPath;
+    // With no folder open, start beside the first Hot file; the server finds its project
+    const hotFile = vscode.workspace.textDocuments.find(d => d.languageId === 'hot' && d.uri.scheme === 'file');
+    const cwd = primaryFolder?.uri.fsPath ?? (hotFile ? path.dirname(hotFile.uri.fsPath) : os.homedir());
 
     channel = channel || vscode.window.createOutputChannel(CHANNEL_NAME);
-    channel.appendLine(`[hot] Starting LSP for primary workspace: ${primaryWorkspace}`);
+    channel.appendLine(`[hot] Starting LSP in: ${cwd}`);
 
     const commandPath = config.get('lsp.commandPath', 'hot');
     channel.appendLine(`[hot] Total workspace folders: ${workspaceFolders.length}`);
@@ -556,7 +479,7 @@ function startClient() {
         command: commandPath,
         args: baseArgs,
         transport: TransportKind.stdio,
-        options: { cwd: vscode.workspace.rootPath || process.cwd() }
+        options: { cwd }
     };
 
     channel.appendLine(`[hot] Launching LSP: ${serverOptions.command} ${serverOptions.args.join(' ')}`);
@@ -568,7 +491,7 @@ function startClient() {
         },
         outputChannel: channel,
         // CRITICAL: Set workspaceFolder to prevent multiple clients in multi-root workspaces
-        workspaceFolder: workspaceFolders[0]
+        workspaceFolder: primaryFolder
     };
 
     client = new LanguageClient(
@@ -582,8 +505,7 @@ function startClient() {
     updateStatus('$(sync~spin) hot', buildTooltip(), 'hot.restartAnalyzer');
 
     client.onDidChangeState((e) => {
-        // 1 = Starting, 2 = Running, 3 = Stopped
-        if (e.newState === 2) {
+        if (e.newState === State.Running) {
             isRunning = true;
             try {
                 const serverInfo = client.initializeResult?.serverInfo;
@@ -592,7 +514,7 @@ function startClient() {
                 }
             } catch (_) {}
             updateStatus('$(check) hot', buildTooltip(), 'hot.restartAnalyzer');
-        } else if (e.newState === 1) {
+        } else if (e.newState === State.Starting) {
             isRunning = false;
             updateStatus('$(sync~spin) hot', buildTooltip(), 'hot.restartAnalyzer');
         } else {
@@ -602,7 +524,9 @@ function startClient() {
         }
     });
 
-    client.start();
+    client.start().catch((e) => {
+        log(`[hot] LSP failed to start: ${e?.message ?? e}`);
+    });
 }
 
 /**
@@ -615,8 +539,7 @@ function activate(context) {
         extVersion = context && context.extension && context.extension.packageJSON && context.extension.packageJSON.version || extVersion;
     } catch (e) {}
 
-    fetchInstalledVersion();
-    checkForUpdates();
+    fetchInstalledVersion(checkForUpdates);
 
     context.subscriptions.push(vscode.commands.registerCommand('hot.startAnalyzer', () => {
         startClient();
@@ -785,6 +708,9 @@ function activate(context) {
             return;
         }
 
+        const fileUri = editor.document.uri.toString();
+        const namespace = extractNamespaceFromDocument(editor.document);
+
         const output = getEvalOutputChannel();
         output.show(true);
 
@@ -793,31 +719,30 @@ function activate(context) {
             title: 'Evaluating...',
             cancellable: false
         }, async () => {
-            const result = await evaluateHotCode(selection.text);
+            const result = await evaluateHotCode(selection.text, namespace, fileUri);
             showResultInOutputChannel(selection.text, result.success ? result.result : result.error, !result.success, result.stdout);
         });
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('hot.clearEvalDecorations', () => {
-        const editor = vscode.window.activeTextEditor;
-        if (editor && evalResultDecorationType) {
-            editor.setDecorations(evalResultDecorationType, []);
-        }
+        clearInlineResult();
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('hot.showEvalOutput', () => {
         getEvalOutputChannel().show(true);
     }));
 
-    // Register document formatting provider for Hot files
-    // This enables format-on-save when the user has it configured
-    context.subscriptions.push(
-        vscode.languages.registerDocumentFormattingEditProvider('hot', {
-            async provideDocumentFormattingEdits(document) {
-                return formatHotDocument(document);
-            }
-        })
-    );
+    // The language server formats Hot files. A second provider would make VS Code
+    // ask which to use, so the CLI only takes over when the server is turned off.
+    if (!vscode.workspace.getConfiguration('hot').get('lsp.enabled', true)) {
+        context.subscriptions.push(
+            vscode.languages.registerDocumentFormattingEditProvider('hot', {
+                async provideDocumentFormattingEdits(document) {
+                    return formatHotDocument(document);
+                }
+            })
+        );
+    }
 
     // Register a command to manually format the current Hot document
     context.subscriptions.push(vscode.commands.registerCommand('hot.formatDocument', async () => {
@@ -864,6 +789,7 @@ async function deactivate() {
         replTerminal.dispose();
         replTerminal = null;
     }
+    clearInlineResult();
     if (evalResultDecorationType) {
         evalResultDecorationType.dispose();
         evalResultDecorationType = null;
@@ -906,15 +832,15 @@ async function createAIHints() {
 /**
  * Fetch the installed CLI version by running `hot version`.
  * Parses output like "hot 0.4.0 (abc1234)" into "0.4.0".
+ * @param {() => void} [done] - Called once the version is known or can't be found
  */
-function fetchInstalledVersion() {
+function fetchInstalledVersion(done) {
     const config = vscode.workspace.getConfiguration('hot');
     const commandPath = config.get('lsp.commandPath', 'hot');
 
     execFile(commandPath, ['version'], { timeout: 5000 }, (error, stdout) => {
-        if (error) return;
         const match = (stdout || '').match(/^hot\s+(\S+)/);
-        if (match) {
+        if (!error && match) {
             installedVersion = match[1];
             updateStatus(
                 statusBarItem?.text || '$(circle-slash) hot',
@@ -922,6 +848,7 @@ function fetchInstalledVersion() {
                 statusBarItem?.command || 'hot.openSettings'
             );
         }
+        if (done) done();
     });
 }
 
@@ -948,21 +875,12 @@ function compareSemver(a, b) {
  */
 function checkForUpdates() {
     const config = vscode.workspace.getConfiguration('hot');
-    if (!config.get('checkForUpdates', true)) return;
+    if (!config.get('checkForUpdates', true) || !installedVersion) return;
 
     const lastCheck = extensionContext?.globalState.get('hotLastUpdateCheck', 0);
     if (Date.now() - lastCheck < VERSION_CHECK_INTERVAL_MS) return;
 
-    const waitForVersion = () => {
-        if (!installedVersion) {
-            setTimeout(waitForVersion, 500);
-            return;
-        }
-        doVersionCheck();
-    };
-
-    // Wait briefly for fetchInstalledVersion to complete
-    setTimeout(waitForVersion, 1000);
+    doVersionCheck();
 }
 
 function doVersionCheck() {
@@ -989,17 +907,19 @@ function doVersionCheck() {
 }
 
 /**
- * Run `hot update` in a terminal, then restart the analyzer.
+ * Run `hot update` in a terminal, then restart the analyzer when it ends.
  */
 function updateHot() {
     const config = vscode.workspace.getConfiguration('hot');
     const commandPath = config.get('lsp.commandPath', 'hot');
 
+    // Run the update as the terminal's process, so the terminal closes when it ends
     const terminal = vscode.window.createTerminal({
         name: 'Hot Update',
-        iconPath: new vscode.ThemeIcon('cloud-download')
+        iconPath: new vscode.ThemeIcon('cloud-download'),
+        shellPath: commandPath,
+        shellArgs: ['update']
     });
-    terminal.sendText(`${commandPath} update`);
     terminal.show();
 
     const disposable = vscode.window.onDidCloseTerminal((t) => {

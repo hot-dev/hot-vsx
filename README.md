@@ -5,7 +5,8 @@ Full language support for [Hot](https://hot.dev) — a functional, expression-ba
 ## Features
 
 - **Syntax Highlighting** — Keywords, types, flows, namespaces, strings, and more
-- **Language Server** — Diagnostics, autocomplete, hover info, go-to-definition
+- **Language Server** — Diagnostics, autocomplete, hover info, go-to-definition, references, formatting
+- **Evaluation** — Run a selection or top-level form and see the result inline, or send code to a REPL
 - **Markdown Support** — Syntax highlighting in fenced code blocks
 
 ## Quick Start
@@ -39,6 +40,10 @@ Date type { year: Int, month: Int, day: Int }
 Date -> Str fn (d: Date): Str {
   `${d.year}-${d.month}-${d.day}`
 }
+
+// Constraints
+Age type { years: Int }
+where gte(%.years, 0)
 ```
 
 ## Commands
@@ -48,8 +53,19 @@ Date -> Str fn (d: Date): Str {
 | `Hot: Start Analyzer` | Start the LSP server |
 | `Hot: Stop Analyzer` | Stop the LSP server |
 | `Hot: Restart Analyzer` | Restart the LSP server |
+| `Hot: Open Settings` | Open the Hot settings |
 | `Hot: Show Logs` | Open the output channel |
-| `Hot: Create AI Hints` | Set up AI coding support (`AGENTS.md` + `.skills/`) |
+| `Hot: Format Document` | Format the current file |
+| `Hot: Evaluate Selection` | Evaluate the selection or current line (`Cmd/Ctrl+Enter`) |
+| `Hot: Evaluate Top-Level Form` | Evaluate the form at the cursor (`Cmd/Ctrl+Shift+Enter`) |
+| `Hot: Evaluate to Output Panel` | Evaluate the selection and show the result in the output panel |
+| `Hot: Show Eval Output` | Open the eval output panel |
+| `Hot: Clear Eval Results` | Clear the inline result (`Escape`) |
+| `Hot: Start REPL` | Open a REPL in a terminal |
+| `Hot: Send Selection to REPL` | Send the selection or current line to the REPL (`Alt+Enter`) |
+| `Hot: Send File to REPL` | Send the current file to the REPL |
+| `Hot: Reset REPL Session` | Clear what evaluation has defined so far |
+| `Hot: Create AI Coding Hints` | Set up AI coding support (`AGENTS.md` + `.skills/`) |
 | `Hot: Update Hot CLI` | Update the Hot CLI to the latest version |
 
 ## Settings
