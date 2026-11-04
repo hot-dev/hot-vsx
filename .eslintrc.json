@@ -6,11 +6,11 @@
         "node": true
     },
     "parserOptions": {
-        "ecmaVersion": 2018,
+        "ecmaVersion": 2022,
         "ecmaFeatures": {
             "jsx": false
         },
-        "sourceType": "module"
+        "sourceType": "script"
     },
     "rules": {
         "no-const-assign": "error",

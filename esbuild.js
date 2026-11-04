@@ -14,7 +14,7 @@ async function main() {
     sourcemap: !production,
     sourcesContent: false,
     platform: 'node',
-    target: ['node16'],
+    target: ['node18'],
     outfile: 'dist/extension.js',
     external: ['vscode'],
     logLevel: 'warning',
