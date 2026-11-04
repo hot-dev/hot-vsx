@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 20
+          node-version: 22
 
       - run: npm ci
 
@@ -28,4 +28,4 @@ jobs:
       - name: Package extension
         run: |
           mkdir -p build
-          npx --yes @vscode/vsce@3.9.2 package --no-yarn --out build/
+          npx --yes @vscode/vsce@4.1.0 package --no-yarn --out build/
