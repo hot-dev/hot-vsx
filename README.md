@@ -5,7 +5,7 @@ Full language support for [Hot](https://hot.dev) — a functional, expression-ba
 ## Features
 
 - **Syntax Highlighting** — Keywords, types, flows, namespaces, strings, and more
-- **Language Server** — Diagnostics, autocomplete, hover info, go-to-definition, references, formatting
+- **Language Server** — Diagnostics, autocomplete, hover info, go-to-definition, references, rename, the Outline, semantic highlighting, formatting
 - **Evaluation** — Run a selection or top-level form and see the result inline, or send code to a REPL
 - **Markdown Support** — Syntax highlighting in fenced code blocks
 

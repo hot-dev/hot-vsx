@@ -60,7 +60,8 @@ function scanLine(text, stack) {
             continue;
         }
 
-        if (text[i] === '\\') { i += 2; continue; }
+        // A block string and a block template have no escapes.
+        if (text[i] === '\\' && (mode === 'string' || mode === 'template')) { i += 2; continue; }
 
         if (mode === 'string' && rest('"')) { stack.pop(); i += 1; continue; }
         if (mode === 'tripleString' && rest('"""')) { stack.pop(); i += 3; continue; }

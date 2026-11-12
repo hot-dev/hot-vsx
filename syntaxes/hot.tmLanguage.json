@@ -100,11 +100,13 @@
 			"patterns": [
 				{
 					"name": "meta.type.coercion.hot",
-					"match": "([A-Z][a-zA-Z0-9_\\-?!]*)\\s*(->)\\s*([A-Z][a-zA-Z0-9_\\-?!]*)",
+					"match": "([A-Z][a-zA-Z0-9_\\-?!]*)\\s*(->)\\s*([A-Z][a-zA-Z0-9_\\-?!]*)(?:(\\.)([A-Z][a-zA-Z0-9_\\-?!]*))?",
 					"captures": {
 						"1": { "name": "entity.name.type.hot" },
 						"2": { "name": "keyword.operator.coercion.hot" },
-						"3": { "name": "entity.name.type.hot" }
+						"3": { "name": "entity.name.type.hot" },
+						"4": { "name": "punctuation.accessor.hot" },
+						"5": { "name": "entity.name.type.variant.hot" }
 					}
 				}
 			]
@@ -129,6 +131,14 @@
 		"keywords": {
 			"patterns": [
 				{
+					"comment": "`open` after `type` or `enum`: an open enum or an open union of literals. Anywhere else it is a name",
+					"match": "(?<![\\w\\-$])(type|enum)(\\s+)(open)(?![\\w\\-$?!])",
+					"captures": {
+						"1": { "name": "keyword.declaration.hot" },
+						"3": { "name": "keyword.declaration.modifier.hot" }
+					}
+				},
+				{
 					"comment": "Declaration keywords - the lookarounds prevent matching in identifiers like type-name or some-type",
 					"name": "keyword.declaration.hot",
 					"match": "(?<![\\w\\-$])(?:type|enum|fn|ns|meta)(?![\\w\\-$])"
@@ -146,15 +156,10 @@
 			]
 		},
 		"tripleQuoteStrings": {
+			"comment": "A block string has no escapes: a backslash is a backslash",
 			"name": "string.quoted.triple.hot",
 			"begin": "\"\"\"",
-			"end": "\"\"\"",
-			"patterns": [
-				{
-					"name": "constant.character.escape.hot",
-					"match": "\\\\."
-				}
-			]
+			"end": "\"\"\""
 		},
 		"strings": {
 			"name": "string.quoted.double.hot",
@@ -183,6 +188,15 @@
 		},
 		"mapKeys": {
 			"patterns": [
+				{
+					"comment": "`name: Type value` at the start of a line binds a name: `limit: Int 3`, `vals: All<Vec> parallel {`. A map entry, a field and a parameter have nothing after the type but a `,` or a `where`",
+					"name": "meta.binding.typed.hot",
+					"match": "^\\s*([a-zA-Z_][a-zA-Z0-9_\\-?!]*)\\s*(:)(?=\\s*(?:::[\\w:\\-]+/)?[A-Z][a-zA-Z0-9_\\-?!]*(?:<[^\\n]*?>+)?\\??(?:\\s*\\|\\s*(?:::[\\w:\\-]+/)?[A-Z][a-zA-Z0-9_\\-?!]*(?:<[^\\n]*?>+)?\\??)*[ \\t]+(?!where(?![\\w\\-?!]))[^\\s,)\\]}|/])",
+					"captures": {
+						"1": { "name": "variable.other.readwrite.hot" },
+						"2": { "name": "punctuation.separator.annotation.hot" }
+					}
+				},
 				{
 					"name": "meta.map-key.hot",
 					"match": "\\b([a-zA-Z_][a-zA-Z0-9_\\-?!]*)\\s*(:)(?![:=])",
@@ -405,7 +419,7 @@
 			"patterns": [
 				{
 					"name": "meta.property.access.hot",
-					"match": "(?<=[a-zA-Z0-9_?!\\]\\)])(\\.)([a-zA-Z_][a-zA-Z0-9_\\-?!]*)",
+					"match": "(?<=[a-zA-Z0-9_?!\\]\\)%])(\\.)([a-zA-Z_][a-zA-Z0-9_\\-?!]*)",
 					"captures": {
 						"1": { "name": "punctuation.accessor.dot.hot" },
 						"2": { "name": "variable.other.property.hot" }
@@ -517,16 +531,13 @@
 			]
 		},
 		"tripleBacktickTemplates": {
+			"comment": "A block template has no escapes, so `\\${x}` is a backslash and an expression",
 			"name": "string.template.triple.hot",
 			"begin": "```",
 			"end": "```",
 			"patterns": [
 				{
 					"include": "#templateExpression"
-				},
-				{
-					"name": "constant.character.escape.hot",
-					"match": "\\\\."
 				}
 			]
 		},

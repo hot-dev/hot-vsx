@@ -107,6 +107,62 @@ test('a value on its own line belongs to its name', () => {
     assert.strictEqual(formAt('100'), 'limit\n100');
 });
 
+test('arities, constructors and pipes on later lines belong to their form', () => {
+    const lines = [
+        'get',
+        'meta {core: true}',
+        'fn',
+        '(coll: Map, key: Any): Any {',
+        '    coll',
+        '},',
+        '(coll: Map, key: Any, not-found: Any): Any {',
+        '    coll',
+        '}',
+        '',
+        'Instant',
+        'type {',
+        '    epoch: Int,',
+        '}',
+        'fn',
+        '(rfc3339: Str): Instant { parse(rfc3339) }',
+        '',
+        'names users',
+        '    |> map(%.name)',
+        '',
+        'limit: Int 3',
+        '    where gt(%, 0)',
+        '',
+        'Port type Int',
+        '    where between(%, 1, 65535)',
+        '    // the registered ports',
+        '',
+        'last 1'
+    ];
+    const at = (text) => {
+        const form = topLevelFormAt(lines, lines.indexOf(text));
+        return [lines[form.start], lines[form.end]];
+    };
+    assert.deepStrictEqual(at('(coll: Map, key: Any, not-found: Any): Any {'), ['get', '}']);
+    assert.deepStrictEqual(at('fn'), ['get', '}']);
+    assert.deepStrictEqual(at('(rfc3339: Str): Instant { parse(rfc3339) }'), ['Instant', '(rfc3339: Str): Instant { parse(rfc3339) }']);
+    assert.deepStrictEqual(at('    |> map(%.name)'), ['names users', '    |> map(%.name)']);
+    assert.deepStrictEqual(at('    where gt(%, 0)'), ['limit: Int 3', '    where gt(%, 0)']);
+    assert.deepStrictEqual(at('    where between(%, 1, 65535)'), ['Port type Int', '    where between(%, 1, 65535)']);
+    assert.deepStrictEqual(at('last 1'), ['last 1', 'last 1']);
+});
+
+test('a block string has no escapes', () => {
+    // The backslash before the closing quotes is text, so the string ends.
+    const lines = ['path """C:\\dir\\"""', 'next fn () {', '  1', '}', 't ```a\\```', 'u 2'];
+    assert.deepStrictEqual(topLevelFormAt(lines, 0), { start: 0, end: 0, awaitingValue: false });
+    assert.strictEqual(topLevelFormAt(lines, 2).start, 1);
+    assert.strictEqual(topLevelFormAt(lines, 5).start, 5);
+    // A string and a template do: the escaped quote doesn't end them.
+    const escaped = ['s "a\\" {"', 'v `b\\` {`', 'w 3'];
+    assert.strictEqual(topLevelFormAt(escaped, 1).start, 1);
+    assert.strictEqual(topLevelFormAt(escaped, 2).start, 2);
+});
+
 test('a block comment is not code', () => {
     assert.strictEqual(formAt('last 1'), 'last 1');
 });

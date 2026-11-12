@@ -2,7 +2,7 @@
   "name": "hot",
   "displayName": "Hot",
   "description": "Hot Language Support with syntax highlighting, LSP integration, and code formatting",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "icon": "images/hot-logo.png",
   "engines": {
     "vscode": "^1.82.0"
@@ -144,6 +144,58 @@
         ],
         "embeddedLanguages": {
           "meta.embedded.block.hot": "hot"
+        }
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "hot",
+        "scopes": {
+          "keyword": [
+            "keyword.control.hot"
+          ],
+          "keyword.declaration": [
+            "keyword.declaration.hot"
+          ],
+          "namespace": [
+            "support.class.hot"
+          ],
+          "type": [
+            "entity.name.type.hot"
+          ],
+          "type.defaultLibrary": [
+            "entity.name.type.hot"
+          ],
+          "struct": [
+            "entity.name.type.hot"
+          ],
+          "struct.defaultLibrary": [
+            "entity.name.type.hot"
+          ],
+          "enum": [
+            "entity.name.type.hot"
+          ],
+          "enum.defaultLibrary": [
+            "entity.name.type.hot"
+          ],
+          "enumMember": [
+            "entity.name.type.variant.hot"
+          ],
+          "function": [
+            "entity.name.function.hot"
+          ],
+          "function.defaultLibrary": [
+            "entity.name.function.hot"
+          ],
+          "parameter.defaultLibrary": [
+            "variable.language.placeholder.hot"
+          ],
+          "variable": [
+            "variable.other.readwrite.hot"
+          ],
+          "property": [
+            "variable.other.property.hot"
+          ]
         }
       }
     ],
