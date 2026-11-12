@@ -1,5 +1,18 @@
 # CHANGE LOG
 
+## [1.4.0] - 2026-11-12
+
+For the language server in the Hot release after 3.0.8, which adds the Outline, rename and semantic highlighting. They turn on when the installed Hot CLI has them.
+
+- The Outline, breadcrumbs and `Go to Symbol in Editor` list a file's namespaces, functions, types with their fields and variants, bindings and tests
+- `Rename Symbol` renames a local, a parameter, a function, a type or a top-level binding, across files. It says why when it can't rename something safely, such as a field
+- Semantic highlighting from the language server: parameters, locals, fields, named arguments, namespaces and enum variants are told apart, and `where`, `meta`, `ns` and `open` are keywords only where they act as one. The colors follow the grammar's scopes, so a theme needs no changes
+- Syntax highlighting for `open` after `type` or `enum`
+- A typed binding (`limit: Int 3`, `vals: All<Vec> parallel {`) highlights as a name, not as a map key
+- A member of the placeholder (`%.amount`) highlights as a property, and the variant in `Bird -> Animal.Bird` as a variant
+- Block strings and block templates no longer highlight a backslash as an escape, so `${...}` after a backslash in a block template is an expression
+- `Hot: Evaluate Top-Level Form` no longer runs past a block string that ends in a backslash
+
 ## [1.3.0] - 2026-11-04
 
 For Hot 3.0.
