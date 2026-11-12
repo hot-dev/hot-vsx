@@ -106,3 +106,86 @@ test('a brace inside a meta string does not end it', () => {
     const doc = tokens('meta {doc: """A } brace""", tags: ["a"]}').find((t) => t.text === 'a');
     assert.ok(doc.scopes.includes('meta.annotation.brace.hot'));
 });
+
+test('open after type or enum is part of the declaration', () => {
+    assert.strictEqual(scopeOf('Method type open "GET" | "POST"', 'open'), 'keyword.declaration.modifier.hot');
+    assert.strictEqual(scopeOf('Method type open | "PUT"', 'open'), 'keyword.declaration.modifier.hot');
+    assert.strictEqual(scopeOf('Animal enum open { Dog }', 'open'), 'keyword.declaration.modifier.hot');
+    assert.strictEqual(scopeOf('Animal enum open { Dog }', 'enum'), 'keyword.declaration.hot');
+    // Anywhere else it is a name.
+    assert.strictEqual(scopeOf('x open', 'open'), 'variable.other.readwrite.hot');
+    assert.strictEqual(scopeOf('open-file(1)', 'open-file'), 'entity.name.function.hot');
+    assert.strictEqual(scopeOf('T type opener', 'opener'), 'variable.other.readwrite.hot');
+});
+
+test('a typed binding is a name, not a key', () => {
+    for (const line of [
+        'limit: Int 3 where gt(%, 0)',
+        '    limit: Int 3',
+        'limit: All<Vec> parallel {',
+        'limit: Str? null',
+        'limit: Map<Str, Vec<Int>> load()',
+        'limit: ::model/User find(1)',
+        'limit: Int | Dec 3'
+    ]) {
+        assert.strictEqual(scopeOf(line, 'limit'), 'variable.other.readwrite.hot', line);
+    }
+    assert.strictEqual(scopeOf('vals: All<Vec> parallel {', 'All'), 'entity.name.type.hot');
+    assert.strictEqual(scopeOf('vals: All<Vec> parallel {', 'parallel'), 'keyword.control.flow.hot');
+    // A field, a parameter on its own line and a map entry are keys.
+    for (const line of [
+        '    limit: Int,',
+        '    limit: Int',
+        '    limit: Str? where ne(%, "")',
+        '    limit: Int // the most',
+        '    limit: Foo(1)',
+        '    limit: Shape.Dot',
+        '    limit: 3',
+        'T type { limit: Int }',
+        'p Point(limit: 1)'
+    ]) {
+        assert.strictEqual(scopeOf(line, 'limit'), 'variable.other.property.hot', line);
+    }
+});
+
+test('a named argument is a property', () => {
+    assert.strictEqual(scopeOf('p Point(x: 1, y: add(a, 2))', 'y'), 'variable.other.property.hot');
+    assert.strictEqual(scopeOf('c Shape.Circle(radius: 5.0)', 'radius'), 'variable.other.property.hot');
+    assert.strictEqual(scopeOf('c Shape.Circle(radius: 5.0)', 'Circle'), 'entity.name.type.variant.hot');
+});
+
+test('a member of the placeholder is a property', () => {
+    assert.strictEqual(scopeOf('f fn (amount: Int) where gt(%.amount, 0) { 1 }', 'amount'), 'variable.other.property.hot');
+    const found = tokens('map(items, %.name)');
+    assert.strictEqual(found.find((t) => t.text === '%').scopes.at(-1), 'variable.language.placeholder.hot');
+    assert.strictEqual(found.find((t) => t.text === 'name').scopes.at(-1), 'variable.other.property.hot');
+});
+
+test('spread in a vec, a map and a call', () => {
+    for (const line of ['xs [...f(x), 0]', 'm {...base, c: 3}', 'add(...xs)']) {
+        assert.strictEqual(scopeOf(line, '...'), 'keyword.operator.spread.hot', line);
+    }
+    assert.strictEqual(scopeOf('xs [...f(x), 0]', 'f'), 'entity.name.function.hot');
+});
+
+test('an enrollment names a variant', () => {
+    const found = tokens('Bird -> Animal.Bird');
+    assert.deepStrictEqual(
+        found.filter((t) => t.text.trim() !== '').map((t) => t.scopes.at(-1)),
+        ['entity.name.type.hot', 'keyword.operator.coercion.hot', 'entity.name.type.hot', 'punctuation.accessor.hot', 'entity.name.type.variant.hot']
+    );
+    assert.strictEqual(scopeOf('Date -> Str fn (d: Date): Str { "x" }', 'Str'), 'entity.name.type.hot');
+});
+
+test('a block string and a block template have no escapes', () => {
+    // The backslash is text, so the string ends at its closing quotes.
+    assert.strictEqual(scopeOf('doc """C:\\dir\\""" x', 'x'), 'variable.other.readwrite.hot');
+    assert.ok(!tokens('doc """a\\n"""').some((t) => t.scopes.includes('constant.character.escape.hot')));
+    // `\${x}` in a block template is a backslash and an expression.
+    const x = tokens('t ```a \\${x} b```').find((t) => t.text === 'x');
+    assert.ok(x.scopes.includes('meta.embedded.expression.hot'));
+    // A string and a template keep their escapes.
+    assert.ok(tokens('s "a\\n"').some((t) => t.scopes.includes('constant.character.escape.hot')));
+    const escaped = tokens('t `a \\${x} b`').find((t) => t.text.includes('x'));
+    assert.ok(!escaped.scopes.includes('meta.embedded.expression.hot'));
+});
